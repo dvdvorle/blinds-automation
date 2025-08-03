@@ -86,7 +86,7 @@ def pull_all(tree=call_trees_url, raw=raw, ignore=ignore):
         print('Leftover files not in GitHub tree:')
         print(internal_tree)
         for i in internal_tree:
-            os.remove(i)
+            #os.remove(i)
             log.append(f'{i} removed from internal memory')
     logfile = open('ugit_log.py', 'w')
     logfile.write(str(log))

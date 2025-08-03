@@ -52,6 +52,7 @@ actions = {
 }
 
 async def publish(client):
+  global should_notify_result
   if should_notify_result and motor.direction() == 0:
     should_notify_result = False
     state = "closed" if motor.position() == 0 else "opened"
