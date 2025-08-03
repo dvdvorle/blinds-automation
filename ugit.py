@@ -63,13 +63,13 @@ def pull_all(tree=call_trees_url, raw=raw, ignore=ignore):
             except:
                 print(f'Failed to create directory {i["path"]}, it may already exist.')
         elif i['path'] not in ignore:
-            try:
-                os.remove(i['path'])
-                log.append(f'{i["path"]} removed from internal memory')
-                internal_tree = remove_item(i['path'], internal_tree)
-            except:
-                log.append(f'{i["path"]} delete failed from internal memory')
-                print('Failed to delete existing file')
+            #try:
+            #    os.remove(i['path'])
+            #    log.append(f'{i["path"]} removed from internal memory')
+            #    internal_tree = remove_item(i['path'], internal_tree)
+            #except:
+            #    log.append(f'{i["path"]} delete failed from internal memory')
+            #    print('Failed to delete existing file')
             try:
                 pull(i['path'], raw + i['path'])
                 log.append(f'{i["path"]} updated')
