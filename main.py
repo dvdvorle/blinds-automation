@@ -7,15 +7,10 @@ import app
 
 logging.basicConfig(level=logging.DEBUG)
 
-(ssid, wifi_pw, server, github_user, github_repository, github_pat) = main_config.settings()
+(ssid, wifi_pw, server) = main_config.settings()
 config['ssid'] = ssid
 config['wifi_pw'] = wifi_pw
 config['server'] = server
-
-ugit.user = github_user
-ugit.repository = github_repository
-ugit.token = github_pat
-ugit.ignore_files = ['/ugit.py', '/main_config.py']
 
 async def up(client):  # Respond to connectivity being (re)established
   while True:

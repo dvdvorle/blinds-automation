@@ -5,18 +5,13 @@ import hashlib
 import binascii
 import machine
 import time
-import network
-from machine import Pin
+import main_config
 
 # Global variable to hold the internal file structure of the device
 global internal_tree
 
-# --- GitHub Repository Configuration ---
-# Set your GitHub username and repository name here
-# Repository must be public unless a personal access token is provided
-user = 'YOUR_GITHUB_USERNAME'
-repository = 'YOUR_REPO_NAME'
-token = ''
+default_branch = 'main'
+(user, repository, token) = main_config.source_settings()
 # Default branch to be used (e.g., 'main' or 'master')
 default_branch = 'main'
 # Files to exclude from update or deletion
@@ -28,8 +23,6 @@ ignore = ignore_files
 giturl = f'https://github.com/{user}/{repository}'
 call_trees_url = f'https://api.github.com/repos/{user}/{repository}/git/trees/{default_branch}?recursive=1'
 raw = f'https://raw.githubusercontent.com/{user}/{repository}/master/'
-
-led = Pin("LED", Pin.OUT)
 
 def pull(f_path, raw_url):
     """
@@ -160,6 +153,8 @@ def pull_git_tree(tree_url=call_trees_url, raw=raw):
         headers['authorization'] = f"bearer {token}"
     r = urequests.get(tree_url, headers=headers)
     data = json.loads(r.content.decode('utf-8'))
+    print(tree_url)
+    print(data)
     if 'tree' not in data:
         raise Exception(f'Default branch "{default_branch}" not found.')
     return data

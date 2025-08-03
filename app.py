@@ -42,6 +42,7 @@ async def calibrate(client, target : str):
   motor.calibrate_to(int(target))
 
 async def update_source(client):
+  logging.debug("Updating sources")
   ugit.pull_all()
 
 actions = {
