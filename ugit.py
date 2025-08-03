@@ -118,6 +118,8 @@ def add_to_tree(dir_item):
             internal_tree.append([subfile_path, get_hash(subfile_path)])
         except OSError:
             print(f'{dir_item} could not be added to tree')
+        except UnicodeError:
+            print(f'{dir_item} could not be added to tree, because of unicodeerror')
 
 def get_hash(file):
     """
