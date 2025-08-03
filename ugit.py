@@ -155,8 +155,6 @@ def pull_git_tree(tree_url=call_trees_url, raw=raw):
         headers['authorization'] = f"bearer {token}"
     r = urequests.get(tree_url, headers=headers)
     data = json.loads(r.content.decode('utf-8'))
-    print(tree_url)
-    print(data)
     if 'tree' not in data:
         raise Exception(f'Default branch "{default_branch}" not found.')
     return data
