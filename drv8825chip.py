@@ -1,3 +1,4 @@
+from typing import Optional
 from machine import Pin, PWM, Timer
 from datetime import timedelta
 import logging
@@ -58,10 +59,12 @@ class Drv8825:
     self._timeout_timer.deinit()
     self._step.deinit()
 
-  def cw(self):
+  def cw(self, max_steps_per_second : int | None = None):
     self._dir.off()
+    self._max_steps_per_second = max_steps_per_second or self._max_steps_per_second
     self._start_motor()
   
-  def ccw(self):
+  def ccw(self, max_steps_per_second : int | None = None):
     self._dir.on()
+    self._max_steps_per_second = max_steps_per_second or self._max_steps_per_second
     self._start_motor()

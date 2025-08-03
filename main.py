@@ -1,101 +1,56 @@
-from machine import Pin
-from utime import sleep
-
-from wifi import Wifi
-from motor_stepper import Motor_stepper, Step_rev_counter
-from drv8825chip import Drv8825
-import socket
-
+from mqtt_as import MQTTClient, config
+import asyncio
 import logging
+import main_config
+import ugit
+import app
 
 logging.basicConfig(level=logging.DEBUG)
-led = Pin("LED", Pin.OUT)
-led.on()
 
-motor_control = Drv8825.from_pin_ids(
-    dirId="GP5",
-    stepId="GP6",
-    disableId="GP4",
-    acceleration_per_second=4000,
-    min_steps_per_second=5000,
-    max_steps_per_second=5000)
+(ssid, wifi_pw, server, github_user, github_repository, github_pat) = main_config.settings()
+config['ssid'] = ssid
+config['wifi_pw'] = wifi_pw
+config['server'] = server
 
-rev_counter = Step_rev_counter("GP7", gear_ratio= 16, micro_steps_per_step= 64)
+ugit.user = github_user
+ugit.repository = github_repository
+ugit.token = github_pat
+ugit.ignore_files = ['/ugit.py', '/main_config.py']
 
-motor = Motor_stepper(
-    motor_control,
-    rev_counter,
-    20
-)
+async def up(client):  # Respond to connectivity being (re)established
+  while True:
+    await client.up.wait()  # Wait on an Event
+    client.up.clear()
+    
+    await client.subscribe(app.command_topic, 1)  # renew subscriptions
 
-motor.calibrate_to(0)
+async def messages(client):  # Respond to incoming messages
+  global should_notify_result
+  async for topic, msg, retained in client.queue:
+    logging.debug("%s %s %s", topic.decode(), msg.decode(), retained)
+    message_parts = msg.decode().split()
+    if not message_parts:
+      return
 
-wlan = Wifi("NL")
-wlan.connect("", "")
+    command, *args = message_parts
 
-host_address = socket.getaddrinfo("0.0.0.0", 80)[0][-1]
-sock = socket.socket()
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-sock.bind(host_address)
-sock.listen(1)
-print("listening on", host_address)
+    if command in app.actions:
+      await app.actions[command](client, *args)
 
-html = """<!DOCTYPE html>
-<html>
-<head> <title>Pico WH</title> </head>
-<body> <h1>Pico WH</h1>
-<p>Current status: %s</p>
-<p><a href="/motor/cw">Turn CW</a></p>
-<p><a href="/motor/ccw">Turn CCW</a></p>
-<p><a href="/motor/off">Turn OFF</a></p>
-</body>
-</html>
-"""
+async def main(client):
+  global should_notify_result
+  await client.connect(quick=True)
+  for coroutine in (up, messages):
+    asyncio.create_task(coroutine(client))
 
-motor_status = "off"
+  while True:
+    await asyncio.sleep(5)
+    await app.publish(client)
 
-while True:
-    try:
-        client, client_address= sock.accept()
-        logging.debug("client connected from %s", client_address)
-        request = str(client.recv(1024))[0:50]
-        logging.debug(request)
-
-        turn_cw = request.find('/motor/cw')
-        turn_ccw = request.find('/motor/ccw')
-        turn_off = request.find('/motor/off')
-
-        if turn_cw >0:
-            motor.move_to(20)
-            motor_status = "turning cw"
-        
-        if turn_ccw >0:
-            motor.move_to(0)
-            motor_status = "turning ccw"
-
-        if turn_off >0:
-            motor.stop()
-            motor_status = "off"
-
-        response = html % motor.direction()
-
-        client.send("HTTP/1.0 200 OK\r\nContent-type: text/html\r\n\r\n")
-        client.send(response)
-        client.close()
-
-    except OSError as e:
-        client.close()
-        sock.close()
-        
-        print('connection closed')
-
-    except KeyboardInterrupt:
-        client.close()
-        sock.close()
-        print('connection closed')
-        break
-
-motor.stop()
-led.off()
-
-print("Finished.")
+config["queue_len"] = 1  # Use event interface with default queue size
+MQTTClient.DEBUG = True
+client = MQTTClient(config)
+try:
+  asyncio.run(main(client))
+finally:
+  client.close()  # Prevent LmacRxBlk:1 errors

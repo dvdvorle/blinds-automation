@@ -1,11 +1,7 @@
 from machine import Pin
-from utime import sleep, ticks_ms
-import math
-from datetime import timedelta
 from drv8825chip import Drv8825
 from typing import Callable
 
-from machine import PWM
 import logging
 
 class Step_rev_counter:
@@ -19,10 +15,11 @@ class Step_rev_counter:
     self._stop_handler = lambda _ : None;
 
     self._step.irq(self.stepped, Pin.IRQ_RISING)
+    self.direction = 0
 
   def stepped(self, _):
     try:
-      self._steps += 1
+      self._steps += self.direction
 
       if self._steps % self._output_revolution_count == 0:
         self._steps = 0
@@ -41,7 +38,6 @@ class Motor_stepper:
     self._rev_counter = rev_counter
     self.rev_range = rev_range
     self._position = 0
-    self._direction = 0
     self.need_calibration = True
 
   def distance(self):
@@ -51,27 +47,34 @@ class Motor_stepper:
     return self._position
   
   def direction(self):
-    return self._direction
+    return self._rev_counter.direction
 
   def calibrate_to(self, target_position):
-    if self._direction != 0:
+    if self._rev_counter.direction != 0:
       raise Exception("Can't calibrate while running")
     
     self._position = target_position
     self.need_calibration = False
 
-  def move_to(self, target_position):
+  def move_to(self, target_position, steps_per_second : int | None = None):
     self.target_position = target_position
+    
+    if self._running():
+      new_direction = -1 if (self.distance() - self._rev_counter.direction) < 1 else 1
+      direction_change = self._rev_counter.direction != new_direction
+      if direction_change:
+        self._revolved()
+        self.stop()
 
     if not self._should_move():
       return
-    
-    self._direction = -1 if self.distance() < 1 else 1
-    start_motor = self._motor_control.cw if self._direction < 1 else self._motor_control.ccw
+
+    self._rev_counter.direction = -1 if self.distance() < 1 else 1
+    start_motor = self._motor_control.cw if self._rev_counter.direction < 1 else self._motor_control.ccw
     
     self._rev_counter.notify(self._revolved, self.stop)
 
-    start_motor()
+    start_motor(steps_per_second)
 
   def stop(self):
     if not self._running():
@@ -79,7 +82,7 @@ class Motor_stepper:
     
     logging.debug("Stopping motor")
 
-    self._direction = 0
+    self._rev_counter.direction = 0
     self._motor_control.off()
 
   def _should_move(self):
@@ -89,11 +92,11 @@ class Motor_stepper:
     if not self._running():
         return
       
-    self._position += self._direction
+    self._position += self._rev_counter.direction
     logging.debug("Revolved, at %s, to %s", self._position, self.target_position)
 
     if not self._should_move():
       self.stop()
 
   def _running(self):
-    return self._direction != 0
+    return self._rev_counter.direction != 0
