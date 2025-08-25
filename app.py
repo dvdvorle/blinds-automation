@@ -14,7 +14,7 @@ motor_control = Drv8825.from_pin_ids(
 
 rev_counter = Step_rev_counter("GP7", gear_ratio = 16, micro_steps_per_step = 64)
 
-opened_revolutions = 28
+opened_revolutions = 25
 motor = Motor_stepper(
   motor_control,
   rev_counter,
@@ -58,4 +58,5 @@ async def publish(client):
     should_notify_result = False
     state = "closed" if motor.position() == 0 else "opened"
     logging.debug("Publishing {}".format(state))
+
     await client.publish(status_topic, state, qos = 1)
