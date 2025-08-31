@@ -16,7 +16,7 @@ default_branch = 'main'
 default_branch = 'main'
 # Files to exclude from update or deletion
 # Do not remove 'ugit.py' from this list unless you know what you are doing
-ignore_files = ['/ugit.py', '/init.py']
+ignore_files = ['/ugit.py', '/init.py', '/README.py']
 ignore = ignore_files
 
 # --- Static URLs for GitHub API and Raw Content Access ---

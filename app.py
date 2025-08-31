@@ -21,7 +21,8 @@ motor = Motor_stepper(
   opened_revolutions
 )
 
-motor.calibrate_to(0)
+if motor.need_calibration:
+  motor.calibrate_to(0)
 command_topic = "woonkamer/gordijn"
 status_topic = command_topic + "/status"
 should_notify_result = False

@@ -1,6 +1,7 @@
 from machine import Pin
 from drv8825chip import Drv8825
 from typing import Callable
+import os
 
 import logging
 
@@ -13,7 +14,6 @@ class Step_rev_counter:
 
     self._revolved_handler = lambda _ : None;
     self._stop_handler = lambda _ : None;
-
     self._step.irq(self.stepped, Pin.IRQ_RISING)
     self.direction = 0
 
@@ -33,10 +33,32 @@ class Step_rev_counter:
     self._stop_handler = stop_handler
 
 class Motor_stepper:
+  POSITION_STORAGE = "number.txt"
+
   def __init__(self, motor_control: Drv8825, rev_counter: Step_rev_counter, rev_range: int):
     self._motor_control = motor_control
     self._rev_counter = rev_counter
     self.rev_range = rev_range
+    self._load_position()
+
+  def _update_position(self, new_position):
+    self._position = new_position
+    self._save_position()
+
+  def _save_position(self):
+    with open(Motor_stepper.POSITION_STORAGE, "w") as file:
+      file.write(str(self._position))
+
+  def _load_position(self):
+    if Motor_stepper.POSITION_STORAGE in os.listdir():
+      with open(Motor_stepper.POSITION_STORAGE, "r") as file:
+        saved_position = file.read()
+
+      if saved_position.isdigit():
+        self._position = int(saved_position)
+        self.need_calibration = False
+        return
+
     self._position = 0
     self.need_calibration = True
 
@@ -49,16 +71,16 @@ class Motor_stepper:
   def direction(self):
     return self._rev_counter.direction
 
-  def calibrate_to(self, target_position):
+  def calibrate_to(self, new_position):
     if self._rev_counter.direction != 0:
       raise Exception("Can't calibrate while running")
     
-    self._position = target_position
+    self._update_position(new_position)
     self.need_calibration = False
 
   def move_to(self, target_position, steps_per_second : int | None = None):
     self.target_position = target_position
-    
+
     if self._running():
       new_direction = -1 if (self.distance() - self._rev_counter.direction) < 1 else 1
       direction_change = self._rev_counter.direction != new_direction
@@ -91,8 +113,8 @@ class Motor_stepper:
   def _revolved(self):
     if not self._running():
         return
-      
-    self._position += self._rev_counter.direction
+
+    self._update_position(self._position + self._rev_counter.direction)
     logging.debug("Revolved, at %s, to %s", self._position, self.target_position)
 
     if not self._should_move():
