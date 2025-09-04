@@ -14,7 +14,7 @@ motor_control = Drv8825.from_pin_ids(
 
 rev_counter = Step_rev_counter("GP7", gear_ratio = 16, micro_steps_per_step = 64)
 
-opened_revolutions = 25
+opened_revolutions = 23
 motor = Motor_stepper(
   motor_control,
   rev_counter,
